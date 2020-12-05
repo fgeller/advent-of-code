@@ -21,24 +21,19 @@ func main() {
 	fail(err)
 
 	scanner := bufio.NewScanner(fh)
-	// missing cid:
-	req := []string{"ecl:", "pid:", "eyr:", "hcl:", "byr:", "iyr:", "hgt:"}
 
+	req := []string{"ecl:", "pid:", "eyr:", "hcl:", "byr:", "iyr:", "hgt:"}
 	var pp string
 	var count int
 
-	check := func() {
+	check := func() string {
 		for _, f := range req {
 			if !strings.Contains(pp, f) {
-				fmt.Printf("missing %#v: %#v\n", f, pp)
-				pp = ""
-				return
+				return fmt.Sprintf("missing %#v: %#v\n", f, pp)
 			}
 		}
-
 		frx := regexp.MustCompile("(...):([^ ]+) ")
 		fss := frx.FindAllStringSubmatch(pp, -1)
-		// fmt.Printf("%#v\n\n", fss)
 
 	fields:
 		for _, fs := range fss {
@@ -48,69 +43,50 @@ func main() {
 			case "byr":
 				i, err := strconv.Atoi(fv)
 				if err != nil {
-					fmt.Printf("invalid byr=%#v err=%v\n", fv, err)
-					pp = ""
-					return
+					return fmt.Sprintf("invalid byr=%#v err=%v\n", fv, err)
 				}
 				if i < 1920 || i > 2002 {
-					fmt.Printf("invalid byr=%#v i=[%v]\n", fv, i)
-					pp = ""
-					return
+
+					return fmt.Sprintf("invalid byr=%#v i=[%v]\n", fv, i)
 				}
 				continue fields
 
 			case "iyr":
 				i, err := strconv.Atoi(fv)
 				if err != nil {
-					fmt.Printf("invalid iyr=%#v err=%v\n", fv, err)
-					pp = ""
-					return
+					return fmt.Sprintf("invalid iyr=%#v err=%v\n", fv, err)
 				}
 				if i < 2010 || i > 2020 {
-					fmt.Printf("invalid iyr=%#v\n", fv)
-					pp = ""
-					return
+					return fmt.Sprintf("invalid iyr=%#v\n", fv)
 				}
 				continue fields
 
 			case "eyr":
 				i, err := strconv.Atoi(fv)
 				if err != nil {
-					fmt.Printf("invalid eyr=%#v err=%v\n", fv, err)
-					pp = ""
-					return
+					return fmt.Sprintf("invalid eyr=%#v err=%v\n", fv, err)
 				}
 				if i < 2020 || i > 2030 {
-					fmt.Printf("invalid eyr=%#v\n", fv)
-					pp = ""
-					return
+					return fmt.Sprintf("invalid eyr=%#v\n", fv)
 				}
 				continue fields
 
 			case "hgt":
 				if !strings.HasSuffix(fv, "cm") && !strings.HasSuffix(fv, "in") {
-					fmt.Printf("invalid hgt suffix: %#v\n", fv)
-					pp = ""
-					return
+					return fmt.Sprintf("invalid hgt, missing suffix: %#v\n", fv)
 				}
 				i, err := strconv.Atoi(fv[:len(fv)-2])
 				if err != nil {
-					fmt.Printf("invalid hgt=%#v err=%v\n", fv, err)
-					pp = ""
-					return
+					return fmt.Sprintf("invalid hgt=%#v err=%v\n", fv, err)
 				}
 				if strings.HasSuffix(fv, "cm") {
 					if i < 150 || i > 193 {
-						fmt.Printf("invalid cm hgt=%#v\n", fv)
-						pp = ""
-						return
+						return fmt.Sprintf("invalid cm hgt=%#v\n", fv)
 					}
 				}
 				if strings.HasSuffix(fv, "in") {
 					if i < 59 || i > 76 {
-						fmt.Printf("invalid in hgt=%#v\n", fv)
-						pp = ""
-						return
+						return fmt.Sprintf("invalid in hgt=%#v\n", fv)
 					}
 				}
 				continue fields
@@ -118,9 +94,7 @@ func main() {
 			case "hcl":
 				rx := regexp.MustCompile("^#[0-9a-f]{6}$")
 				if !rx.MatchString(fv) {
-					fmt.Printf("invalid hcl: %#v\n", fv)
-					pp = ""
-					return
+					return fmt.Sprintf("invalid hcl: %#v\n", fv)
 				}
 				continue fields
 
@@ -129,17 +103,13 @@ func main() {
 				case "amb", "blu", "brn", "gry", "grn", "hzl", "oth":
 					continue fields
 				default:
-					fmt.Printf("invalid ecl: %#v\n", fv)
-					pp = ""
-					return
+					return fmt.Sprintf("invalid ecl: %#v\n", fv)
 				}
 
 			case "pid":
-				rx := regexp.MustCompile("^[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]$")
+				rx := regexp.MustCompile("^[0-9]{9}$")
 				if !rx.MatchString(fv) {
-					fmt.Printf("invalid pid: %#v\n", fv)
-					pp = ""
-					return
+					return fmt.Sprintf("invalid pid: %#v\n", fv)
 				}
 				continue fields
 
@@ -151,22 +121,28 @@ func main() {
 			}
 		}
 
-		fmt.Printf("valid: %#v\n", pp)
-		count++
+		return ""
+	}
+
+	checkPass := func() {
+		if e := check(); e == "" {
+			count++
+		} else {
+			fmt.Print(e)
+		}
 		pp = ""
 	}
 
-scan:
 	for scanner.Scan() {
 		l := scanner.Text()
 		if l != "" {
 			pp += l + " "
-			continue scan
 		} else {
-			check()
+			checkPass()
 		}
 	}
-	check()
+	checkPass()
+
 	err = scanner.Err()
 	fail(err)
 
