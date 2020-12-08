@@ -78,14 +78,14 @@ func findNested(rules map[string]map[string]int64, outer string) (count int64) {
 
 	for {
 		// fmt.Printf(">> seek=%#v next=%#v count=%#v\n", seek, next, count)
-		for n, c := range seek {
-			for nn, nc := range rules[n] {
-				inc := c * nc
+		for needle, outerCount := range seek {
+			for nested, nestedCount := range rules[needle] {
+				inc := outerCount * nestedCount
 				count += inc
-				if _, ok := next[nn]; ok {
-					next[nn] += inc
+				if _, ok := next[nested]; ok {
+					next[nested] += inc
 				} else {
-					next[nn] = inc
+					next[nested] = inc
 				}
 			}
 		}
@@ -99,6 +99,27 @@ func findNested(rules map[string]map[string]int64, outer string) (count int64) {
 	}
 
 	return
+}
+
+func findNestedRec(rules map[string]map[string]int64, needles map[string]int64, count int64) int64 {
+	fmt.Printf("findNestedRec count=%#v\n", count)
+	next := map[string]int64{}
+	for needle, outerCount := range needles {
+		for nested, nestedCount := range rules[needle] {
+			inc := outerCount * nestedCount
+			count += inc
+			if _, ok := next[nested]; ok {
+				next[nested] += inc
+			} else {
+				next[nested] = inc
+			}
+		}
+	}
+	if len(next) == 0 {
+		return count
+	} else {
+		return findNestedRec(rules, next, count)
+	}
 }
 
 func main() {
@@ -118,6 +139,6 @@ func main() {
 	container := findContainers(rules, "shiny gold")
 	fmt.Printf("found %v container bags\n", len(container))
 
-	nested := findNested(rules, "shiny gold")
+	nested := findNestedRec(rules, map[string]int64{"shiny gold": 1}, 0)
 	fmt.Printf("found %v nested bags\n", nested)
 }
